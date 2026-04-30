@@ -1,0 +1,28 @@
+server:
+  port: 9080
+  shutdown: graceful
+
+spring:
+  application:
+    name: event-pipeline-producer
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+app:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    client-id: event-producer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    com.leejx.eventpipeline: DEBUG
