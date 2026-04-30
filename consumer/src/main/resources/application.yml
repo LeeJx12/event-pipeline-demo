@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: event-pipeline-consumer
+  main:
+    web-application-type: none   # consumer is not a web app
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+app:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    group-id: event-pipeline-consumer
+    topic: events
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  server:
+    port: 9081     # actuator separate port
+
+logging:
+  level:
+    root: INFO
+    com.leejx.eventpipeline: DEBUG

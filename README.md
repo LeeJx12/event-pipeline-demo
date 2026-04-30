@@ -44,8 +44,8 @@ Why this shape:
 
 | Module | Stack | Status |
 |---|---|---|
-| `producer` | Spring Boot 3 + Kotlin + WebFlux + Reactor Kafka | scaffold + unit tests |
-| `consumer` | Spring Boot 3 + Kotlin + Kafka + gRPC client | planned |
+| `producer` | Spring Boot 3 + Kotlin + WebFlux + Reactor Kafka | scaffold + integration tests |
+| `consumer` | Spring Boot 3 + Kotlin + Reactor Kafka | scaffold + log handler |
 | `enrichment` | Spring Boot 3 + Kotlin + gRPC server + Redis | planned |
 | `proto` | protobuf definitions | planned |
 
@@ -65,12 +65,22 @@ docker compose up -d
 ```bash
 ./gradlew build
 ./gradlew :producer:test
+./gradlew :consumer:test
 ```
 
 ### Run producer locally
 
 ```bash
 ./gradlew :producer:bootRun
+# Listens on http://localhost:9080
+```
+
+### Run consumer locally (separate terminal)
+
+```bash
+./gradlew :consumer:bootRun
+# Subscribes to 'events' topic, logs received messages
+# Actuator on http://localhost:9081/actuator
 ```
 
 ### Send a test event

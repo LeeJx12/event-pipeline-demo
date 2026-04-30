@@ -5,19 +5,19 @@ plugins {
 }
 
 dependencies {
-    // Spring Boot Reactive Web
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    // Spring Boot
+    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // Kafka (reactive)
+    // Reactor Kafka (consumer side)
     implementation("io.projectreactor.kafka:reactor-kafka:1.3.23")
+    implementation("io.projectreactor:reactor-core")
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     // Logging
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")
@@ -28,5 +28,5 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:1.20.4")
     testImplementation("org.testcontainers:kafka:1.20.4")
     testImplementation("io.mockk:mockk:1.13.13")
-    testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("org.awaitility:awaitility:4.2.2")
 }
