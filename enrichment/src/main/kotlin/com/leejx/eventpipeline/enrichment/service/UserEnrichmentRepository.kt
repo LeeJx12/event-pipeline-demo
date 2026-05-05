@@ -53,7 +53,7 @@ class UserEnrichmentRepository(
             .setFound(true)
             .setCountry(countries[Math.floorMod(hash, countries.size)])
             .setTier(tiers[Math.floorMod(hash, tiers.size)])
-            .setSignupUnixMs(SIGNUP_BASELINE + Math.floorMod(hash, 365L * 24 * 3600 * 1000))
+            .setSignupUnixMs(SIGNUP_BASELINE + Math.floorMod(hash, (365L * 24 * 3600 * 1000).toInt()))
             .addAllTags(if (hash % 2 == 0) listOf("a", "b") else listOf("c"))
             .build()
     }
