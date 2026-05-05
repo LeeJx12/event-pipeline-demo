@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: event-pipeline-enrichment
+  main:
+    web-application-type: none   # gRPC only, no HTTP
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 1s
+
+grpc:
+  server:
+    port: 9090
+    enable-keep-alive: true
+    keep-alive-time: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  server:
+    port: 9091
+
+logging:
+  level:
+    root: INFO
+    com.leejx.eventpipeline: DEBUG
+    net.devh.boot.grpc: INFO

@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package com.leejx.eventpipeline.enrichment.v1;
+
+option java_multiple_files = true;
+option java_package = "com.leejx.eventpipeline.enrichment.v1";
+option java_outer_classname = "EnrichmentProto";
+
+// Service that enriches events with user metadata.
+// Called by Consumer once per consumed event (or per batch).
+service EnrichmentService {
+
+  // Look up enrichment data for a single user.
+  rpc GetUserEnrichment(GetUserEnrichmentRequest) returns (GetUserEnrichmentResponse);
+
+  // Batch variant — preferred under load to amortize gRPC overhead.
+  rpc BatchGetUserEnrichment(BatchGetUserEnrichmentRequest) returns (BatchGetUserEnrichmentResponse);
+}
+
+message GetUserEnrichmentRequest {
+  string user_id = 1;
+}
+
+message GetUserEnrichmentResponse {
+  string user_id = 1;
+  UserEnrichment enrichment = 2;
+  bool cache_hit = 3;
+}
+
+message BatchGetUserEnrichmentRequest {
+  repeated string user_ids = 1;
+}
+
+message BatchGetUserEnrichmentResponse {
+  // Same order as request; absent users get an empty UserEnrichment with found=false
+  repeated GetUserEnrichmentResponse results = 1;
+}
+
+message UserEnrichment {
+  bool found = 1;
+  string country = 2;        // e.g. "KR"
+  string tier = 3;           // e.g. "premium" / "basic"
+  int64 signup_unix_ms = 4;  // user signup time
+  repeated string tags = 5;
+}
