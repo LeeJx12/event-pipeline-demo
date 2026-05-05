@@ -1,0 +1,8 @@
+aws_region   = "ap-northeast-2"
+environment  = "dev"
+project_name = "event-pipeline-demo"
+
+# Never commit real passwords.
+db_username = "pipeline"
+db_password = "replace-me-with-a-long-password"
+db_name     = "pipeline"
