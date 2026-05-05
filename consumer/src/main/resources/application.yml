@@ -2,7 +2,7 @@ spring:
   application:
     name: event-pipeline-consumer
   main:
-    web-application-type: none   # consumer is not a web app
+    web-application-type: none
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
@@ -12,15 +12,24 @@ app:
     group-id: event-pipeline-consumer
     topic: events
 
+grpc:
+  client:
+    enrichment:
+      address: ${ENRICHMENT_GRPC_ADDRESS:static://localhost:9090}
+      negotiation-type: plaintext
+      keep-alive-time: 30s
+      max-inbound-message-size: 4194304   # 4MB
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
   server:
-    port: 9081     # actuator separate port
+    port: 9081
 
 logging:
   level:
     root: INFO
     com.leejx.eventpipeline: DEBUG
+    net.devh.boot.grpc: INFO

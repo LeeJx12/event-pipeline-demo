@@ -1,13 +1,18 @@
 package com.leejx.eventpipeline.consumer
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.leejx.eventpipeline.consumer.enrichment.EnrichmentClient
+import com.leejx.eventpipeline.consumer.enrichment.EnrichmentResult
 import com.leejx.eventpipeline.consumer.service.EventConsumer
+import com.ninjasquad.springmockk.MockkBean
+import io.mockk.every
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -15,6 +20,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.kafka.ConfluentKafkaContainer
 import org.testcontainers.utility.DockerImageName
+import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.UUID
 
@@ -26,6 +32,17 @@ class EventConsumerIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @MockkBean
+    private lateinit var enrichmentClient: EnrichmentClient
+
+    @BeforeEach
+    fun setupMock() {
+        // Default mock: enrichment available with synthetic data
+        every { enrichmentClient.lookup(any()) } returns Mono.just(
+            EnrichmentResult.unavailable() // Use unavailable to keep test independent of UserEnrichment shape
+        )
+    }
 
     @Test
     fun `consumer processes a message published to the events topic`() {
@@ -71,6 +88,9 @@ class EventConsumerIntegrationTest {
         @DynamicPropertySource
         fun overrideProperties(registry: DynamicPropertyRegistry) {
             registry.add("app.kafka.bootstrap-servers") { KAFKA.bootstrapServers }
+            // Point gRPC client at a dead address so the real bean wiring works
+            // even though our @MockkBean intercepts all calls before they leave.
+            registry.add("grpc.client.enrichment.address") { "static://localhost:1" }
         }
     }
 }

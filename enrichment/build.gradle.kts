@@ -15,6 +15,8 @@ dependencies {
 
     // gRPC server (LogNet starter — most used in JVM ecosystem)
     implementation("net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE")
+    // gRPC transport — LogNet starter does NOT bundle a transport.
+    runtimeOnly("io.grpc:grpc-netty-shaded:1.68.1")
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
