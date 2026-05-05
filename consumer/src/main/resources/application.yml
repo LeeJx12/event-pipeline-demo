@@ -5,6 +5,19 @@ spring:
     web-application-type: none
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  r2dbc:
+    url: ${POSTGRES_R2DBC_URL:r2dbc:postgresql://localhost:5432/pipeline}
+    username: ${POSTGRES_USER:pipeline}
+    password: ${POSTGRES_PASSWORD:pipeline}
+  flyway:
+    enabled: true
+    url: ${POSTGRES_JDBC_URL:jdbc:postgresql://localhost:5432/pipeline}
+    user: ${POSTGRES_USER:pipeline}
+    password: ${POSTGRES_PASSWORD:pipeline}
+    locations: classpath:db/migration
+    table: flyway_schema_history_consumer
+    baseline-on-migrate: true
+    baseline-version: 0
 
 app:
   kafka:
@@ -18,7 +31,7 @@ grpc:
       address: ${ENRICHMENT_GRPC_ADDRESS:static://localhost:9090}
       negotiation-type: plaintext
       keep-alive-time: 30s
-      max-inbound-message-size: 4194304   # 4MB
+      max-inbound-message-size: 4194304 # 4MB
 
 management:
   endpoints:

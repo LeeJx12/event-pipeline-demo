@@ -11,6 +11,9 @@ dependencies {
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
 
     // Reactor Kafka (consumer side)
     implementation("io.projectreactor.kafka:reactor-kafka:1.3.23")
@@ -21,6 +24,10 @@ dependencies {
     // gRPC transport — LogNet starter does NOT bundle a transport,
     // so we need to pick one explicitly. netty-shaded is the standard choice.
     runtimeOnly("io.grpc:grpc-netty-shaded:1.68.1")
+
+    // PostgreSQL: R2DBC for runtime writes, JDBC only for Flyway migration
+    runtimeOnly("org.postgresql:r2dbc-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -36,6 +43,8 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.testcontainers:junit-jupiter:1.20.4")
     testImplementation("org.testcontainers:kafka:1.20.4")
+    testImplementation("org.testcontainers:postgresql:1.20.4")
+    testImplementation("org.testcontainers:r2dbc:1.20.4")
     testImplementation("io.mockk:mockk:1.13.13")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
     testImplementation("org.awaitility:awaitility:4.2.2")

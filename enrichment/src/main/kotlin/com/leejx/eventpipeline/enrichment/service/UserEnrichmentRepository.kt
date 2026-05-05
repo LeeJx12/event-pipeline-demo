@@ -9,20 +9,22 @@ import reactor.core.publisher.Mono
 import java.time.Duration
 
 /**
- * Loads UserEnrichment data with Redis as the primary cache.
+ * Loads UserEnrichment data with Redis as cache-aside.
  *
  * Behavior:
- *   1. Attempt Redis GET — return on hit
- *   2. On miss, synthesize a deterministic UserEnrichment from the userId
- *      (this stands in for a future RDS lookup; W2 후반 / W3 에 RDS 도입 예정)
- *   3. Asynchronously cache the synthesized record with a 1-hour TTL
+ * 1. Redis GET — return immediately on hit
+ * 2. Redis miss → PostgreSQL user_metadata lookup
+ * 3. DB hit → async Redis write-back with 1h TTL
+ * 4. DB miss → deterministic synthetic fallback, also cached
  *
- * The cache key namespace `enrichment:user:{userId}` keeps prefix scans cheap.
+ * Redis/cache failures never fail the lookup. DB failures fall back to synthetic
+ * data so enrichment stays available in degraded mode.
  */
 @Repository
 class UserEnrichmentRepository(
     private val redis: ReactiveStringRedisTemplate,
     private val objectMapper: ObjectMapper,
+    private val userMetadataRepository: UserMetadataRepository,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -30,22 +32,32 @@ class UserEnrichmentRepository(
         val key = cacheKey(userId)
         return redis.opsForValue().get(key)
             .map { json -> EnrichmentLookupResult(deserialize(json), cacheHit = true) }
-            .switchIfEmpty(loadAndCache(userId, key))
+            .doOnError { err -> log.warn("Redis read failed for {}", userId, err) }
+            .onErrorResume { Mono.empty() }
+            .switchIfEmpty(Mono.defer { loadFromDbOrFallbackAndCache(userId, key) })
     }
 
-    private fun loadAndCache(userId: String, key: String): Mono<EnrichmentLookupResult> =
-        Mono.fromCallable { synthesizeFor(userId) }
-            .flatMap { enrichment ->
-                redis.opsForValue()
-                    .set(key, serialize(enrichment), CACHE_TTL)
-                    .doOnError { err -> log.warn("Failed to cache enrichment for {}", userId, err) }
-                    .onErrorResume { Mono.just(true) }
-                    .map { EnrichmentLookupResult(enrichment, cacheHit = false) }
+    private fun loadFromDbOrFallbackAndCache(userId: String, key: String): Mono<EnrichmentLookupResult> =
+        userMetadataRepository.findByUserId(userId)
+            .doOnNext { log.debug("User metadata DB hit for {}", userId) }
+            .onErrorResume { err ->
+                log.warn("User metadata DB lookup failed for {}. Falling back to synthetic enrichment", userId, err)
+                Mono.empty()
             }
+            .switchIfEmpty(Mono.fromCallable { synthesizeFor(userId) })
+            .flatMap { enrichment -> cacheAndReturn(key, userId, enrichment) }
+
+    private fun cacheAndReturn(
+        key: String,
+        userId: String,
+        enrichment: UserEnrichment,
+    ): Mono<EnrichmentLookupResult> = redis.opsForValue()
+        .set(key, serialize(enrichment), CACHE_TTL)
+        .doOnError { err -> log.warn("Failed to cache enrichment for {}", userId, err) }
+        .onErrorResume { Mono.just(true) }
+        .map { EnrichmentLookupResult(enrichment, cacheHit = false) }
 
     private fun synthesizeFor(userId: String): UserEnrichment {
-        // Deterministic stub. Replace with RDS lookup later.
-        // Using userId hash so the same input yields the same output every time.
         val hash = userId.hashCode()
         val countries = listOf("KR", "US", "JP", "DE", "FR")
         val tiers = listOf("basic", "premium", "enterprise")
@@ -58,11 +70,8 @@ class UserEnrichmentRepository(
             .build()
     }
 
-    private fun serialize(enrichment: UserEnrichment): String {
-        // Persist as JSON for human-debuggability in redis-cli.
-        // Protobuf binary would be smaller but inscrutable on the wire.
-        return objectMapper.writeValueAsString(enrichment.toJsonMap())
-    }
+    private fun serialize(enrichment: UserEnrichment): String =
+        objectMapper.writeValueAsString(enrichment.toJsonMap())
 
     private fun deserialize(json: String): UserEnrichment {
         @Suppress("UNCHECKED_CAST")
