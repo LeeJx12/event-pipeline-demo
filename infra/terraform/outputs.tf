@@ -29,3 +29,18 @@ output "redis_endpoint" {
 output "redis_port" {
   value = module.redis.port
 }
+
+output "producer_ecr_repository_url" {
+  description = "Producer ECR repository URL"
+  value       = module.ecr.repository_urls["producer"]
+}
+
+output "consumer_ecr_repository_url" {
+  description = "Consumer ECR repository URL"
+  value       = module.ecr.repository_urls["consumer"]
+}
+
+output "enrichment_ecr_repository_url" {
+  description = "Enrichment ECR repository URL"
+  value       = module.ecr.repository_urls["enrichment"]
+}

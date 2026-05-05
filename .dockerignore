@@ -1,0 +1,12 @@
+.git
+.github
+.gradle
+**/build
+**/.terraform
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+.DS_Store
+.idea
+.vscode
+node_modules
