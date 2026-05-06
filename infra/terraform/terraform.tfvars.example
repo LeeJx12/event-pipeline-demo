@@ -1,8 +1,15 @@
-aws_region   = "ap-northeast-2"
-environment  = "dev"
-project_name = "event-pipeline-demo"
+aws_region  = "ap-northeast-2"
+environment = "dev"
 
-# Never commit real passwords.
+# Never commit real passwords. Copy this file to terraform.tfvars locally.
 db_username = "pipeline"
-db_password = "replace-me-with-a-long-password"
+db_password = "CHANGE_ME_TO_A_LONG_DEV_PASSWORD"
 db_name     = "pipeline"
+
+# Use dev-latest after running ./scripts/ecr-build-push.sh.
+# Or set to a git SHA tag, e.g. image_tag = "e917c5a".
+image_tag = "dev-latest"
+
+# MSK/Kafka is not provisioned in W3-3 yet.
+# Producer can boot behind ALB, but event publish needs a real broker later.
+kafka_bootstrap_servers = "not-configured:9092"

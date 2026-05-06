@@ -41,3 +41,31 @@ module "redis" {
   subnet_ids       = module.network.private_subnet_ids
   allowed_app_cidr = var.allowed_app_cidr
 }
+
+module "ecs" {
+  source = "./modules/ecs"
+
+  name_prefix       = local.name_prefix
+  aws_region        = var.aws_region
+  vpc_id            = module.network.vpc_id
+  public_subnet_ids = module.network.public_subnet_ids
+
+  producer_image   = "${module.ecr.repository_urls["producer"]}:${var.image_tag}"
+  enrichment_image = "${module.ecr.repository_urls["enrichment"]}:${var.image_tag}"
+
+  desired_count             = var.ecs_desired_count
+  producer_cpu              = var.producer_cpu
+  producer_memory           = var.producer_memory
+  enrichment_cpu            = var.enrichment_cpu
+  enrichment_memory         = var.enrichment_memory
+  kafka_bootstrap_servers   = var.kafka_bootstrap_servers
+
+  db_host     = module.rds.endpoint
+  db_port     = module.rds.port
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_password = var.db_password
+
+  redis_host = module.redis.endpoint
+  redis_port = module.redis.port
+}

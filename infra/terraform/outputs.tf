@@ -14,6 +14,18 @@ output "ecr_repository_urls" {
   value = module.ecr.repository_urls
 }
 
+output "producer_ecr_repository_url" {
+  value = module.ecr.repository_urls["producer"]
+}
+
+output "consumer_ecr_repository_url" {
+  value = module.ecr.repository_urls["consumer"]
+}
+
+output "enrichment_ecr_repository_url" {
+  value = module.ecr.repository_urls["enrichment"]
+}
+
 output "rds_endpoint" {
   value = module.rds.endpoint
 }
@@ -30,17 +42,22 @@ output "redis_port" {
   value = module.redis.port
 }
 
-output "producer_ecr_repository_url" {
-  description = "Producer ECR repository URL"
-  value       = module.ecr.repository_urls["producer"]
+output "ecs_cluster_name" {
+  value = module.ecs.cluster_name
 }
 
-output "consumer_ecr_repository_url" {
-  description = "Consumer ECR repository URL"
-  value       = module.ecr.repository_urls["consumer"]
+output "producer_alb_dns_name" {
+  value = module.ecs.alb_dns_name
 }
 
-output "enrichment_ecr_repository_url" {
-  description = "Enrichment ECR repository URL"
-  value       = module.ecr.repository_urls["enrichment"]
+output "producer_url" {
+  value = "http://${module.ecs.alb_dns_name}"
+}
+
+output "enrichment_cloud_map_dns" {
+  value = module.ecs.enrichment_dns_name
+}
+
+output "ecs_service_security_group_id" {
+  value = module.ecs.service_security_group_id
 }
