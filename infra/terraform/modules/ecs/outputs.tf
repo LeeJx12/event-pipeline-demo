@@ -29,3 +29,16 @@ output "enrichment_dns_name" {
 output "service_security_group_id" {
   value = aws_security_group.service.id
 }
+
+
+output "kafka_service_name" {
+  value = aws_ecs_service.kafka.name
+}
+
+output "kafka_dns_name" {
+  value = local.kafka_dns_name
+}
+
+output "kafka_bootstrap_servers" {
+  value = "${local.kafka_dns_name}:9092"
+}

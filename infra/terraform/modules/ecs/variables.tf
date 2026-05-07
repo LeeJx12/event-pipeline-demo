@@ -93,3 +93,39 @@ variable "redis_port" {
   type        = number
   description = "Redis port."
 }
+
+
+variable "environment" {
+  type        = string
+  description = "Deployment environment name. Used for short AWS resource names where service limits are tight."
+}
+
+variable "kafka_image" {
+  type        = string
+  description = "Kafka container image for the dev-only single-node ECS Kafka service."
+}
+
+variable "kafka_cpu" {
+  type        = number
+  description = "Kafka task CPU units."
+}
+
+variable "kafka_memory" {
+  type        = number
+  description = "Kafka task memory MiB."
+}
+
+variable "kafka_desired_count" {
+  type        = number
+  description = "Desired task count for the dev Kafka service. Keep this at 1."
+}
+
+variable "kafka_cluster_id" {
+  type        = string
+  description = "Static KRaft cluster ID for the single-node dev Kafka container."
+}
+
+variable "kafka_num_partitions" {
+  type        = number
+  description = "Default topic partition count for dev Kafka."
+}

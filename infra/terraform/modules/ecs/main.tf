@@ -1,19 +1,24 @@
 locals {
   namespace_name       = "${var.name_prefix}.local"
+  kafka_dns_name       = "kafka.${local.namespace_name}"
   enrichment_dns_name  = "enrichment.${local.namespace_name}"
   producer_log_group   = "/ecs/${var.name_prefix}/producer"
   enrichment_log_group = "/ecs/${var.name_prefix}/enrichment"
+  kafka_log_group      = "/ecs/${var.name_prefix}/kafka"
 
   common_environment = [
     { name = "SPRING_PROFILES_ACTIVE", value = "aws" },
     { name = "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE", value = "health,info,metrics,prometheus" }
   ]
 
+  # W3-4: Kafka runs as an ephemeral single-node ECS/Fargate service and is
+  # discoverable through Cloud Map. Producer should use the Cloud Map DNS name,
+  # not localhost and not the old placeholder variable.
   producer_environment = concat(local.common_environment, [
     { name = "SERVER_PORT", value = "9080" },
-    { name = "SPRING_KAFKA_BOOTSTRAP_SERVERS", value = var.kafka_bootstrap_servers },
-    { name = "KAFKA_BOOTSTRAP_SERVERS", value = var.kafka_bootstrap_servers },
-    { name = "APP_KAFKA_BOOTSTRAP_SERVERS", value = var.kafka_bootstrap_servers }
+    { name = "SPRING_KAFKA_BOOTSTRAP_SERVERS", value = "${local.kafka_dns_name}:9092" },
+    { name = "KAFKA_BOOTSTRAP_SERVERS", value = "${local.kafka_dns_name}:9092" },
+    { name = "APP_KAFKA_BOOTSTRAP_SERVERS", value = "${local.kafka_dns_name}:9092" }
   ])
 
   enrichment_environment = concat(local.common_environment, [
@@ -28,6 +33,26 @@ locals {
     { name = "SPRING_DATA_REDIS_HOST", value = var.redis_host },
     { name = "SPRING_DATA_REDIS_PORT", value = tostring(var.redis_port) }
   ])
+
+  kafka_environment = [
+    # Confluent Kafka KRaft single-node config for dev-only ECS/Fargate smoke tests.
+    # Keep Cloud Map DNS in advertised.listeners so producer can connect inside the VPC.
+    { name = "CLUSTER_ID", value = var.kafka_cluster_id },
+    { name = "KAFKA_NODE_ID", value = "1" },
+    { name = "KAFKA_PROCESS_ROLES", value = "broker,controller" },
+    { name = "KAFKA_CONTROLLER_QUORUM_VOTERS", value = "1@127.0.0.1:9093" },
+    { name = "KAFKA_LISTENERS", value = "PLAINTEXT://0.0.0.0:9092,CONTROLLER://127.0.0.1:9093" },
+    { name = "KAFKA_ADVERTISED_LISTENERS", value = "PLAINTEXT://${local.kafka_dns_name}:9092" },
+    { name = "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", value = "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT" },
+    { name = "KAFKA_CONTROLLER_LISTENER_NAMES", value = "CONTROLLER" },
+    { name = "KAFKA_INTER_BROKER_LISTENER_NAME", value = "PLAINTEXT" },
+    { name = "KAFKA_AUTO_CREATE_TOPICS_ENABLE", value = "true" },
+    { name = "KAFKA_NUM_PARTITIONS", value = tostring(var.kafka_num_partitions) },
+    { name = "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", value = "1" },
+    { name = "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", value = "1" },
+    { name = "KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", value = "1" },
+    { name = "KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", value = "0" }
+  ]
 }
 
 resource "aws_ecs_cluster" "this" {
@@ -51,6 +76,11 @@ resource "aws_cloudwatch_log_group" "producer" {
 resource "aws_cloudwatch_log_group" "enrichment" {
   name              = local.enrichment_log_group
   retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "kafka" {
+  name              = local.kafka_log_group
+  retention_in_days = 3
 }
 
 resource "aws_iam_role" "task_execution" {
@@ -164,6 +194,16 @@ resource "aws_security_group_rule" "service_to_enrichment_actuator" {
   protocol          = "tcp"
 }
 
+resource "aws_security_group_rule" "service_to_kafka" {
+  type              = "ingress"
+  description       = "ECS service-to-service Kafka"
+  security_group_id = aws_security_group.service.id
+  self              = true
+  from_port         = 9092
+  to_port           = 9092
+  protocol          = "tcp"
+}
+
 resource "aws_lb" "producer" {
   name               = "${var.name_prefix}-alb"
   load_balancer_type = "application"
@@ -173,7 +213,8 @@ resource "aws_lb" "producer" {
 }
 
 resource "aws_lb_target_group" "producer" {
-  name        = "ep-dev-producer-tg"
+  # ALB target group names are limited to 32 chars.
+  name        = "ep-${var.environment}-producer-tg"
   port        = 9080
   protocol    = "HTTP"
   target_type = "ip"
@@ -224,6 +265,64 @@ resource "aws_service_discovery_service" "enrichment" {
   health_check_custom_config {
     failure_threshold = 1
   }
+}
+
+resource "aws_service_discovery_service" "kafka" {
+  name = "kafka"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.this.id
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+}
+
+resource "aws_ecs_task_definition" "kafka" {
+  family                   = "${var.name_prefix}-kafka"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.kafka_cpu
+  memory                   = var.kafka_memory
+  execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
+  container_definitions = jsonencode([
+    {
+      name      = "kafka"
+      image     = var.kafka_image
+      essential = true
+      portMappings = [
+        {
+          containerPort = 9092
+          hostPort      = 9092
+          protocol      = "tcp"
+        }
+      ]
+      environment = local.kafka_environment
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.kafka.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "kafka"
+        }
+      }
+    }
+  ])
 }
 
 resource "aws_ecs_task_definition" "producer" {
@@ -309,6 +408,24 @@ resource "aws_ecs_task_definition" "enrichment" {
   ])
 }
 
+resource "aws_ecs_service" "kafka" {
+  name            = "${var.name_prefix}-kafka"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.kafka.arn
+  desired_count   = var.kafka_desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.public_subnet_ids
+    security_groups  = [aws_security_group.service.id]
+    assign_public_ip = true
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.kafka.arn
+  }
+}
+
 resource "aws_ecs_service" "producer" {
   name            = "${var.name_prefix}-producer"
   cluster         = aws_ecs_cluster.this.id
@@ -328,7 +445,10 @@ resource "aws_ecs_service" "producer" {
     container_port   = 9080
   }
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [
+    aws_lb_listener.http,
+    aws_ecs_service.kafka
+  ]
 }
 
 resource "aws_ecs_service" "enrichment" {

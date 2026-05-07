@@ -95,12 +95,48 @@ variable "kafka_bootstrap_servers" {
 }
 
 variable "aws_profile" {
-  description = "AWS CLI profile name"
+  description = "AWS CLI profile name used by Terraform"
   type        = string
   default     = "leejx2"
 }
 
 variable "aws_account_id" {
-  description = "Expected AWS account ID. Terraform will fail if credentials point elsewhere."
+  description = "Expected AWS account ID. Terraform fails if credentials point to another account."
   type        = string
+}
+
+variable "kafka_image" {
+  description = "Dev-only single-node Kafka image for ECS/Fargate."
+  type        = string
+  default     = "confluentinc/cp-kafka:7.7.1"
+}
+
+variable "kafka_cpu" {
+  description = "Kafka task CPU units."
+  type        = number
+  default     = 1024
+}
+
+variable "kafka_memory" {
+  description = "Kafka task memory MiB."
+  type        = number
+  default     = 2048
+}
+
+variable "kafka_desired_count" {
+  description = "Desired count for dev Kafka. Keep this at 1 because this is a single-node KRaft broker."
+  type        = number
+  default     = 1
+}
+
+variable "kafka_cluster_id" {
+  description = "Static KRaft cluster ID for the dev Kafka container."
+  type        = string
+  default     = "MkU3OEVBNTcwNTJENDM2Qk"
+}
+
+variable "kafka_num_partitions" {
+  description = "Default number of Kafka partitions for auto-created topics."
+  type        = number
+  default     = 6
 }

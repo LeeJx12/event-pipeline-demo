@@ -46,6 +46,7 @@ module "ecs" {
   source = "./modules/ecs"
 
   name_prefix       = local.name_prefix
+  environment       = var.environment
   aws_region        = var.aws_region
   vpc_id            = module.network.vpc_id
   public_subnet_ids = module.network.public_subnet_ids
@@ -59,6 +60,13 @@ module "ecs" {
   enrichment_cpu            = var.enrichment_cpu
   enrichment_memory         = var.enrichment_memory
   kafka_bootstrap_servers   = var.kafka_bootstrap_servers
+
+  kafka_image           = var.kafka_image
+  kafka_cpu             = var.kafka_cpu
+  kafka_memory          = var.kafka_memory
+  kafka_desired_count   = var.kafka_desired_count
+  kafka_cluster_id      = var.kafka_cluster_id
+  kafka_num_partitions  = var.kafka_num_partitions
 
   db_host     = module.rds.endpoint
   db_port     = module.rds.port

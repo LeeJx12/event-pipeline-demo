@@ -61,3 +61,12 @@ output "enrichment_cloud_map_dns" {
 output "ecs_service_security_group_id" {
   value = module.ecs.service_security_group_id
 }
+
+
+output "kafka_cloud_map_dns" {
+  value = module.ecs.kafka_dns_name
+}
+
+output "kafka_bootstrap_servers" {
+  value = module.ecs.kafka_bootstrap_servers
+}
