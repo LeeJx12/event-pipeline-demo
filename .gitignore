@@ -51,6 +51,7 @@ crash.*.log
 # Test reports
 **/test-output/
 **/test-results/
+docs/evidence/**
 
 # Docker
 docker-compose.override.yml
